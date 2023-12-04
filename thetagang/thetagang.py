@@ -272,10 +272,12 @@ def start(config_path, without_ibc=False):
         portfolio_manager.manage()
 
     ib = IB()
-    ib.connectedEvent += onConnected
+    runforever = True
+    if not runforever:
+        ib.connectedEvent += onConnected
 
-    completion_future = asyncio.Future()
-    portfolio_manager = PortfolioManager(config, ib, completion_future)
+        completion_future = asyncio.Future()
+        portfolio_manager = PortfolioManager(config, ib, completion_future)
 
     probeContractConfig = config["watchdog"]["probeContract"]
     watchdogConfig = config.get("watchdog", {})
@@ -298,12 +300,16 @@ def start(config_path, without_ibc=False):
 
         ib.RaiseRequestErrors = ibc_config.get("RaiseRequestErrors", False)
 
-        watchdog = Watchdog(ibc, ib, probeContract=probeContract, **watchdogConfig)
-        watchdog.start()
+        if not runforever:
+            watchdog = Watchdog(ibc, ib, probeContract=probeContract, **watchdogConfig)
+            watchdog.start()
 
-        ib.run(completion_future)
-        watchdog.stop()
-        ibc.terminate()
+            ib.run(completion_future)
+            watchdog.stop()
+            ibc.terminate()
+        else:
+            ibc.start()
+            ib.run() # run forever
     else:
         ib.connect(
             watchdogConfig["host"],
